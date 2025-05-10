@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FiLogOut, FiUser, FiCreditCard } from "react-icons/fi";
 import { useAppSelector, useAppDispatch } from "../store/hooks";
 import { logout } from "../store/auth/authSlice";
@@ -6,9 +6,11 @@ import { logout } from "../store/auth/authSlice";
 const Navbar = () => {
   const currentUser = useAppSelector((state) => state.auth.currentUser);
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
 
   const handleLogout = () => {
     dispatch(logout());
+    navigate("/login", { replace: true });
   };
 
   return (

@@ -1,14 +1,8 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FiMail, FiAlertCircle, FiKey, FiCreditCard } from "react-icons/fi";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { login } from "../store/auth/authSlice";
-
-interface LocationState {
-  from: {
-    pathname: string;
-  };
-}
+import { login, clearError } from "../store/auth/authSlice";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -17,24 +11,21 @@ const Login = () => {
 
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const { status, error } = useAppSelector((state) => state.auth);
 
-  const from = (location.state as LocationState)?.from?.pathname || "/";
-
   useEffect(() => {
     setIsLoaded(true);
-  }, []);
+
+    dispatch(clearError());
+  }, [dispatch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
-      const resultAction = await dispatch(login({ email, password })).unwrap();
-      if (resultAction) {
-        navigate(from, { replace: true });
-      }
+      await dispatch(login({ email, password }));
+      navigate("/", { replace: true });
     } catch (err) {
       console.error("Login failed:", err);
     }

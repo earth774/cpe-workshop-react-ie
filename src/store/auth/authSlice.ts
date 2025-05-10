@@ -1,125 +1,116 @@
-import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { User } from "../../types";
+import * as api from "../../services/api";
 
 interface AuthState {
   currentUser: User | null;
   status: "idle" | "loading" | "succeeded" | "failed";
   error: string | null;
+  profileStatus: "idle" | "loading" | "succeeded" | "failed";
 }
 
-const initialState: AuthState = {
+const preloadedState: AuthState = {
   currentUser: null,
   status: "idle",
   error: null,
-};
-
-const loadUserFromStorage = (): User | null => {
-  const userString = localStorage.getItem("user");
-  if (userString) {
-    return JSON.parse(userString);
-  }
-  return null;
-};
-
-const preloadedState: AuthState = {
-  currentUser: loadUserFromStorage(),
-  status: "idle",
-  error: null,
+  profileStatus: "idle",
 };
 
 export const login = createAsyncThunk<
-  User,
-  { email: string; password: string },
-  { rejectValue: string }
->("auth/login", async ({ email, password }, { rejectWithValue }) => {
-  try {
-    if (email === "demo@example.com" && password === "password") {
-      const user: User = {
-        id: "1",
-        name: "Demo User",
-        email: "demo@example.com",
-      };
+  { user: User; status: number },
+  { email: string; password: string }
+>("auth/login", async ({ email, password }, { dispatch }) => {
+  const response = await api.login(email, password);
+  localStorage.setItem("access_token", response.data.access_token);
+  localStorage.setItem("refresh_token", response.data.refresh_token);
 
-      localStorage.setItem("user", JSON.stringify(user));
-      return user;
-    } else {
-      return rejectWithValue("Email หรือรหัสผ่านไม่ถูกต้อง");
-    }
-  } catch (error) {
-    if (error instanceof Error) {
-      return rejectWithValue(error.message);
-    }
-    return rejectWithValue("An unexpected error occurred");
-  }
+  dispatch(fetchUserProfile());
+
+  return {
+    user: response.user,
+    status: response.status || 201,
+  };
 });
 
-export const register = createAsyncThunk<
-  User,
-  { name: string; email: string; password: string },
-  { rejectValue: string }
->("auth/register", async ({ name, email, password }, { rejectWithValue }) => {
-  try {
-    if (email === "demo@example.com") {
-      return rejectWithValue("Email นี้ถูกใช้ไปแล้ว");
-    }
-
-    const user: User = {
-      id: Date.now().toString(),
-      name,
-      email,
-    };
-
-    localStorage.setItem("user", JSON.stringify(user));
-    return user;
-  } catch (error) {
-    if (error instanceof Error) {
-      return rejectWithValue(error.message);
-    }
-    return rejectWithValue("An unexpected error occurred");
+export const fetchUserProfile = createAsyncThunk<User, void>(
+  "auth/fetchUserProfile",
+  async () => {
+    const response = await api.getProfile();
+    return response.data;
   }
+);
+
+export const register = createAsyncThunk<
+  { user: User; token: string },
+  { name: string; email: string; password: string }
+>("auth/register", async ({ name, email, password }) => {
+  const response = await api.register(name, email, password);
+  const user: User = {
+    id: response.data.id,
+    name: response.data.name,
+    email: response.data.email,
+    status_id: response.data.status_id,
+    created_at: response.data.created_at,
+    updated_at: response.data.updated_at,
+  };
+  return {
+    user: user,
+    token: response.data.email,
+  };
 });
 
 export const logout = createAsyncThunk("auth/logout", async () => {
-  localStorage.removeItem("user");
+  try {
+    await api.logout();
+  } catch (error) {
+    console.error("Logout error:", error);
+  }
   return null;
 });
 
 const authSlice = createSlice({
   name: "auth",
   initialState: preloadedState,
-  reducers: {},
+  reducers: {
+    clearError: (state) => {
+      state.error = null;
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(login.pending, (state) => {
         state.status = "loading";
         state.error = null;
       })
-      .addCase(login.fulfilled, (state, action: PayloadAction<User>) => {
+      .addCase(login.fulfilled, (state, action) => {
         state.status = "succeeded";
+        state.currentUser = action.payload.user;
+        state.error = null;
+      })
+      .addCase(fetchUserProfile.pending, (state) => {
+        state.profileStatus = "loading";
+      })
+      .addCase(fetchUserProfile.fulfilled, (state, action) => {
+        state.profileStatus = "succeeded";
         state.currentUser = action.payload;
       })
-      .addCase(login.rejected, (state, action) => {
-        state.status = "failed";
-        state.error = action.payload as string;
-      })
-
       .addCase(register.pending, (state) => {
         state.status = "loading";
         state.error = null;
       })
-      .addCase(register.fulfilled, (state, action: PayloadAction<User>) => {
+      .addCase(register.fulfilled, (state, action) => {
         state.status = "succeeded";
-        state.currentUser = action.payload;
+        state.currentUser = action.payload.user;
+        state.error = null;
       })
-      .addCase(register.rejected, (state, action) => {
-        state.status = "failed";
-        state.error = action.payload as string;
-      })
-
       .addCase(logout.fulfilled, (state) => {
         state.currentUser = null;
+        state.status = "idle";
+        state.profileStatus = "idle";
+        state.error = null;
       });
   },
 });
 
+export const { clearError } = authSlice.actions;
 export default authSlice.reducer;

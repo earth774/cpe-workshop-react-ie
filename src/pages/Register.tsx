@@ -7,18 +7,21 @@ import {
   FiCreditCard,
   FiKey,
   FiShield,
+  FiGlobe,
 } from "react-icons/fi";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { register } from "../store/auth/authSlice";
+import { register, clearError } from "../store/auth/authSlice";
 
 const Register = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [googleId, setGoogleId] = useState("");
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const [showGoogleId, setShowGoogleId] = useState(false);
 
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -27,7 +30,8 @@ const Register = () => {
 
   useEffect(() => {
     setIsLoaded(true);
-  }, []);
+    dispatch(clearError());
+  }, [dispatch]);
 
   useEffect(() => {
     if (!password) {
@@ -93,14 +97,23 @@ const Register = () => {
     setValidationError(null);
 
     try {
-      const resultAction = await dispatch(
-        register({ name, email, password })
-      ).unwrap();
-      if (resultAction) {
-        navigate("/");
-      }
+      const userData = {
+        name,
+        email,
+        password,
+        ...(googleId && { google_id: googleId }),
+      };
+      await dispatch(register(userData));
+      navigate("/login");
     } catch (err) {
       console.error("Registration failed:", err);
+    }
+  };
+
+  const toggleGoogleIdField = () => {
+    setShowGoogleId(!showGoogleId);
+    if (!showGoogleId) {
+      setGoogleId("");
     }
   };
 
@@ -111,7 +124,6 @@ const Register = () => {
           isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
         }`}
       >
-        {/* โลโก้หรือไอคอนแอป */}
         <div className="flex justify-center mb-6">
           <div className="bg-primary/90 text-white p-4 rounded-full shadow-lg shadow-primary/20">
             <FiCreditCard className="w-8 h-8" />
@@ -119,7 +131,6 @@ const Register = () => {
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          {/* ส่วนหัว */}
           <div className="bg-gradient-to-r from-primary to-primary-dark p-6 text-white">
             <h2 className="text-2xl font-bold">สมัครสมาชิก</h2>
             <p className="text-primary-50 mt-1">
@@ -128,7 +139,6 @@ const Register = () => {
           </div>
 
           <div className="p-8">
-            {/* ข้อความแสดงข้อผิดพลาด */}
             {(validationError || error) && (
               <div className="bg-red-50 text-red-600 p-4 rounded-lg flex items-start mb-6 border-l-4 border-red-500 animate-fadeIn">
                 <FiAlertCircle className="mr-3 mt-0.5 flex-shrink-0" />
@@ -193,7 +203,6 @@ const Register = () => {
                   required
                 />
 
-                {/* แสดงความแข็งแรงของรหัสผ่าน */}
                 {password && (
                   <div className="mt-2">
                     <div className="flex justify-between items-center mb-1">
@@ -254,6 +263,43 @@ const Register = () => {
                   <p className="mt-1 text-xs text-red-500">รหัสผ่านไม่ตรงกัน</p>
                 )}
               </div>
+
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  onClick={toggleGoogleIdField}
+                  className="text-sm text-primary hover:text-primary-dark transition-colors duration-200 flex items-center"
+                >
+                  <FiGlobe className="mr-1" />
+                  {showGoogleId
+                    ? "ซ่อน Google ID"
+                    : "เพิ่ม Google ID (สำหรับการเชื่อมต่อบัญชี Google)"}
+                </button>
+              </div>
+
+              {showGoogleId && (
+                <div>
+                  <label
+                    htmlFor="googleId"
+                    className="block text-gray-700 font-medium mb-2 flex items-center"
+                  >
+                    <FiGlobe className="mr-2 text-primary" />
+                    Google ID
+                  </label>
+                  <input
+                    id="googleId"
+                    type="text"
+                    value={googleId}
+                    onChange={(e) => setGoogleId(e.target.value)}
+                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-20 transition-all duration-200 outline-none"
+                    placeholder="รหัส Google ID ของคุณ (ถ้ามี)"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    ใช้สำหรับการเชื่อมต่อกับบัญชี Google ของคุณ
+                    (ไม่จำเป็นต้องกรอก)
+                  </p>
+                </div>
+              )}
 
               <div className="pt-3">
                 <button

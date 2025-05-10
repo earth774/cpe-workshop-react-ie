@@ -51,12 +51,6 @@ const Dashboard = () => {
 
   const totalPages = Math.ceil(filteredTransactions.length / pageSize);
 
-  useEffect(() => {
-    if (status === "idle") {
-      dispatch(fetchTransactions());
-    }
-  }, [dispatch, status]);
-
   const currentItems = useMemo(() => {
     const indexOfLastItem = currentPage * pageSize;
     const indexOfFirstItem = indexOfLastItem - pageSize;

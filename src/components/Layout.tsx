@@ -1,18 +1,7 @@
-import { useEffect } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet } from "react-router-dom";
 import Navbar from "./Navbar";
-import { useAppSelector } from "../store/hooks";
 
 const Layout = () => {
-  const currentUser = useAppSelector((state) => state.auth.currentUser);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!currentUser) {
-      navigate("/login");
-    }
-  }, [currentUser, navigate]);
-
   return (
     <div className="min-h-screen bg-gray-100">
       <Navbar />
