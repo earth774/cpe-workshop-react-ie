@@ -1,10 +1,9 @@
 import { Link, useNavigate } from "react-router-dom";
-import { FiLogOut, FiUser, FiCreditCard } from "react-icons/fi";
-import { useAppSelector, useAppDispatch } from "../store/hooks";
+import { FiLogOut, FiCreditCard } from "react-icons/fi";
+import { useAppDispatch } from "../store/hooks";
 import { logout } from "../store/auth/authSlice";
 
 const Navbar = () => {
-  const currentUser = useAppSelector((state) => state.auth.currentUser);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
@@ -25,13 +24,8 @@ const Navbar = () => {
               <span className="font-bold text-lg">บันทึกรายรับรายจ่าย</span>
             </Link>
           </div>
-          {currentUser && (
+          {
             <div className="flex items-center">
-              <div className="flex items-center mr-4">
-                <FiUser className="mr-2" />
-                <span>{currentUser.name}</span>
-              </div>
-
               <button
                 onClick={handleLogout}
                 className="flex items-center text-white hover:text-gray-200"
@@ -40,7 +34,7 @@ const Navbar = () => {
                 <span>ออกจากระบบ</span>
               </button>
             </div>
-          )}
+          }
         </div>
       </div>
     </nav>

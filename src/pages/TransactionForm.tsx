@@ -1,86 +1,77 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useAppSelector, useAppDispatch } from "../store/hooks";
-import { selectTransactionById } from "../store/transactions/transactionsSelectors";
+import { useAppDispatch } from "../store/hooks";
 import {
-  addTransaction,
-  updateTransaction,
-  fetchTransactions,
+  fetchLedgers,
+  fetchDashboardData,
 } from "../store/transactions/transactionsSlice";
 import { format } from "date-fns";
+import { FiDollarSign, FiFileText, FiTag, FiArrowLeft } from "react-icons/fi";
 import {
-  FiCalendar,
-  FiDollarSign,
-  FiFileText,
-  FiTag,
-  FiArrowLeft,
-} from "react-icons/fi";
-import { TransactionFormData } from "../types";
+  createLedger,
+  updateLedger,
+  getLedgerById,
+  getCategories,
+} from "../services/api";
 
 const TransactionForm = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
-  const transactionsStatus = useAppSelector(
-    (state) => state.transactions.status
-  );
-  const transaction = useAppSelector((state) =>
-    id ? selectTransactionById(state, id) : null
-  );
+  const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState([]);
 
   const [isEditMode, setIsEditMode] = useState(false);
-
-  const [formData, setFormData] = useState<TransactionFormData>({
-    type: "expense",
+  const [formData, setFormData] = useState({
+    type: "EXPENSE",
     amount: "",
-    category: "",
+    ledger_category_id: "",
     date: format(new Date(), "yyyy-MM-dd"),
-    description: "",
+    remark: "",
   });
 
   useEffect(() => {
-    if (transactionsStatus === "idle" && id) {
-      dispatch(fetchTransactions());
-    }
-  }, [dispatch, id, transactionsStatus]);
+    const fetchCategories = async () => {
+      try {
+        const response = await getCategories();
+        setCategories(response.data);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   useEffect(() => {
-    if (id && transaction) {
-      setIsEditMode(true);
-      setFormData({
-        type: transaction.type,
-        amount: transaction.amount.toString(),
-        category: transaction.category,
-        date: format(new Date(transaction.date), "yyyy-MM-dd"),
-        description: transaction.description,
-      });
-    } else if (id && transactionsStatus === "succeeded" && !transaction) {
-      navigate("/transactions");
-    }
-  }, [id, transaction, transactionsStatus, navigate]);
+    const fetchTransactionData = async () => {
+      if (id) {
+        setIsEditMode(true);
+        setLoading(true);
 
-  const categoryOptions = {
-    income: [
-      "เงินเดือน",
-      "งานพิเศษ",
-      "ของขวัญ",
-      "เงินปันผล",
-      "ดอกเบี้ย",
-      "อื่นๆ",
-    ],
-    expense: [
-      "อาหาร",
-      "ค่าเช่า",
-      "ค่าน้ำค่าไฟ",
-      "การเดินทาง",
-      "ความบันเทิง",
-      "ช้อปปิ้ง",
-      "สุขภาพ",
-      "การศึกษา",
-      "อื่นๆ",
-    ],
-  };
+        try {
+          const response = await getLedgerById(id);
+          const ledger = response.data;
+
+          setFormData({
+            type: ledger.type,
+            amount: ledger.amount.toString(),
+            ledger_category_id: ledger.ledger_category_id.toString(),
+            date: format(new Date(ledger.created_at), "yyyy-MM-dd"),
+            remark: ledger.remark || "",
+          });
+        } catch (error) {
+          console.error("Error fetching transaction details:", error);
+          navigate("/transactions");
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchTransactionData();
+  }, [id, navigate]);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -98,60 +89,55 @@ const TransactionForm = () => {
     }
   };
 
-  const handleTypeChange = (type: "income" | "expense") => {
+  const handleTypeChange = (type: "INCOME" | "EXPENSE") => {
     setFormData((prev) => ({
       ...prev,
       type,
-
-      category: "",
+      ledger_category_id: "",
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.amount || !formData.category || !formData.date) {
+    if (!formData.amount || !formData.ledger_category_id || !formData.date) {
       alert("กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน");
       return;
     }
 
-    const transactionData = {
-      ...formData,
-      amount: parseFloat(formData.amount),
-      date: new Date(formData.date).toISOString(),
-    };
+    setLoading(true);
 
     try {
+      const transactionData = {
+        type: formData.type,
+        amount: parseFloat(formData.amount),
+        ledger_category_id: parseInt(formData.ledger_category_id),
+        remark: formData.remark,
+      };
+
       if (isEditMode && id) {
-        await dispatch(
-          updateTransaction({ id, updatedData: transactionData })
-        ).unwrap();
+        await updateLedger(id, transactionData);
       } else {
-        await dispatch(addTransaction(transactionData)).unwrap();
+        await createLedger(transactionData);
       }
 
-      navigate("/transactions");
+      dispatch(fetchLedgers({ page: 1, limit: 10 }));
+      dispatch(fetchDashboardData({}));
+
+      navigate("/");
     } catch (error) {
       console.error("Error saving transaction:", error);
       alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
+    } finally {
+      setLoading(false);
     }
   };
-
-  if (id && transactionsStatus === "loading") {
-    return (
-      <div className="page-container">
-        <div className="flex items-center justify-center h-64">
-          <p className="text-gray-500">กำลังโหลดข้อมูล...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="page-container">
       <div className="mb-6">
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/transactions")}
           className="flex items-center text-gray-600 hover:text-gray-900"
         >
           <FiArrowLeft className="mr-2" />
@@ -172,9 +158,9 @@ const TransactionForm = () => {
             <div className="flex space-x-4">
               <button
                 type="button"
-                onClick={() => handleTypeChange("income")}
+                onClick={() => handleTypeChange("INCOME")}
                 className={`flex-1 py-3 rounded-md flex justify-center items-center ${
-                  formData.type === "income"
+                  formData.type === "INCOME"
                     ? "bg-income text-white"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
@@ -184,9 +170,9 @@ const TransactionForm = () => {
 
               <button
                 type="button"
-                onClick={() => handleTypeChange("expense")}
+                onClick={() => handleTypeChange("EXPENSE")}
                 className={`flex-1 py-3 rounded-md flex justify-center items-center ${
-                  formData.type === "expense"
+                  formData.type === "EXPENSE"
                     ? "bg-expense text-white"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
@@ -222,7 +208,7 @@ const TransactionForm = () => {
 
           <div className="mb-6">
             <label
-              htmlFor="category"
+              htmlFor="ledger_category_id"
               className="block text-gray-700 font-medium mb-2"
             >
               หมวดหมู่ *
@@ -232,17 +218,17 @@ const TransactionForm = () => {
                 <FiTag />
               </div>
               <select
-                id="category"
-                name="category"
-                value={formData.category}
+                id="ledger_category_id"
+                name="ledger_category_id"
+                value={formData.ledger_category_id}
                 onChange={handleChange}
                 className="form-input pl-10"
                 required
               >
                 <option value="">เลือกหมวดหมู่</option>
-                {categoryOptions[formData.type].map((category) => (
-                  <option key={category} value={category}>
-                    {category}
+                {categories.map((category: any) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
                   </option>
                 ))}
               </select>
@@ -251,30 +237,7 @@ const TransactionForm = () => {
 
           <div className="mb-6">
             <label
-              htmlFor="date"
-              className="block text-gray-700 font-medium mb-2"
-            >
-              วันที่ *
-            </label>
-            <div className="relative">
-              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
-                <FiCalendar />
-              </div>
-              <input
-                id="date"
-                name="date"
-                type="date"
-                value={formData.date}
-                onChange={handleChange}
-                className="form-input pl-10"
-                required
-              />
-            </div>
-          </div>
-
-          <div className="mb-6">
-            <label
-              htmlFor="description"
+              htmlFor="remark"
               className="block text-gray-700 font-medium mb-2"
             >
               คำอธิบาย
@@ -284,9 +247,9 @@ const TransactionForm = () => {
                 <FiFileText />
               </div>
               <textarea
-                id="description"
-                name="description"
-                value={formData.description}
+                id="remark"
+                name="remark"
+                value={formData.remark}
                 onChange={handleChange}
                 placeholder="รายละเอียดเพิ่มเติม (ถ้ามี)"
                 className="form-input pl-10 h-24"
@@ -307,12 +270,17 @@ const TransactionForm = () => {
             <button
               type="submit"
               className={`btn ${
-                formData.type === "income"
+                formData.type === "INCOME"
                   ? "bg-income text-white hover:bg-green-600"
                   : "bg-primary text-white hover:bg-primary-dark"
               }`}
+              disabled={loading}
             >
-              {isEditMode ? "บันทึกการแก้ไข" : "เพิ่มธุรกรรม"}
+              {loading
+                ? "กำลังบันทึก..."
+                : isEditMode
+                ? "บันทึกการแก้ไข"
+                : "เพิ่มธุรกรรม"}
             </button>
           </div>
         </form>

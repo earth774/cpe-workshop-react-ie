@@ -4,7 +4,6 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
-import TransactionList from "./pages/TransactionList";
 import TransactionForm from "./pages/TransactionForm";
 import Layout from "./components/Layout";
 
@@ -57,7 +56,6 @@ function App() {
         }
       >
         <Route index element={<Dashboard />} />
-        <Route path="transactions" element={<TransactionList />} />
         <Route path="transactions/new" element={<TransactionForm />} />
         <Route path="transactions/edit/:id" element={<TransactionForm />} />
       </Route>

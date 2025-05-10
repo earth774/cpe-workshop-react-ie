@@ -1,16 +1,14 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useAppSelector, useAppDispatch } from "../store/hooks";
 import {
-  fetchTransactions,
-  deleteTransaction,
+  fetchDashboardData,
+  fetchLedgers,
+  deleteLedgerItem,
+  selectLedgers,
+  selectLedgerStatus,
+  selectPaginationMeta,
 } from "../store/transactions/transactionsSlice";
-import {
-  selectIncomeSummary,
-  selectExpenseSummary,
-  selectBalanceSummary,
-  selectCategorySummary,
-} from "../store/transactions/transactionsSelectors";
 import TransactionItem from "../components/TransactionItem";
 import Pagination from "../components/Pagination";
 import DashboardCard from "../components/DashboardCard";
@@ -21,53 +19,59 @@ import {
   FiPlusCircle,
   FiFilter,
 } from "react-icons/fi";
-import { Transaction } from "../types";
 
 const Dashboard = () => {
   const dispatch = useAppDispatch();
-  const transactions = useAppSelector(
-    (state) => state.transactions.transactions
+  const dashboardData = useAppSelector(
+    (state) => state.transactions.dashboardData
   );
-  const status = useAppSelector((state) => state.transactions.status);
 
-  const [filteredTransactions, setFilteredTransactions] = useState<
-    Transaction[]
-  >([]);
+  const ledgers = useAppSelector(selectLedgers);
+  const ledgerStatus = useAppSelector(selectLedgerStatus);
+  const paginationMeta = useAppSelector(selectPaginationMeta);
+
+  console.log("ledgers : ", ledgers);
+
+  const getOneMonthAgoDate = () => {
+    const date = new Date();
+    date.setMonth(date.getMonth() - 1);
+    return date.toISOString().split("T")[0];
+  };
+
+  const getOneMonthLaterDate = () => {
+    const date = new Date();
+    date.setMonth(date.getMonth() + 1);
+    return date.toISOString().split("T")[0];
+  };
+
+  const [startDate, setStartDate] = useState<string>(getOneMonthAgoDate());
+  const [endDate, setEndDate] = useState<string>(getOneMonthLaterDate());
+
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [currentType, setCurrentType] = useState<"all" | "income" | "expense">(
     "all"
   );
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortField, setSortField] = useState<"date" | "amount" | "category">(
-    "date"
-  );
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
-  const incomeSummary = useAppSelector(selectIncomeSummary);
-  const expenseSummary = useAppSelector(selectExpenseSummary);
-  const balanceSummary = useAppSelector(selectBalanceSummary);
-  const categories = useAppSelector(selectCategorySummary);
-
-  const totalPages = Math.ceil(filteredTransactions.length / pageSize);
-
-  const currentItems = useMemo(() => {
-    const indexOfLastItem = currentPage * pageSize;
-    const indexOfFirstItem = indexOfLastItem - pageSize;
-    return filteredTransactions.slice(indexOfFirstItem, indexOfLastItem);
-  }, [filteredTransactions, currentPage, pageSize]);
+  const fetchLedgersWithFilters = () => {
+    dispatch(
+      fetchLedgers({
+        page: currentPage,
+        limit: pageSize,
+        startDate,
+        endDate,
+        type: currentType,
+      })
+    );
+  };
 
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
   };
 
   const handlePageSizeChange = (newSize: number) => {
-    const firstItemIndex = (currentPage - 1) * pageSize;
-
     setPageSize(newSize);
-
-    const newCurrentPage = Math.floor(firstItemIndex / newSize) + 1;
-    setCurrentPage(newCurrentPage);
+    setCurrentPage(1);
   };
 
   const handleTypeFilter = (type: "all" | "income" | "expense") => {
@@ -75,55 +79,35 @@ const Dashboard = () => {
     setCurrentPage(1);
   };
 
-  const handleSort = (field: "date" | "amount" | "category") => {
-    if (sortField === field) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      setSortField(field);
-      setSortDirection("asc");
+  const handleDeleteLedger = (id: number) => {
+    if (window.confirm("คุณต้องการลบรายการนี้ใช่หรือไม่?")) {
+      dispatch(deleteLedgerItem(id));
     }
-    setCurrentPage(1);
   };
 
-  const handleDeleteTransaction = (id: string) => {
-    if (window.confirm("คุณต้องการลบรายการนี้ใช่หรือไม่?")) {
-      dispatch(deleteTransaction(id));
-    }
+  const handleDateFilterChange = () => {
+    dispatch(
+      fetchDashboardData({
+        startDate,
+        endDate,
+      })
+    );
+    fetchLedgersWithFilters();
   };
 
   useEffect(() => {
-    let result = [...transactions];
+    dispatch(
+      fetchDashboardData({
+        startDate,
+        endDate,
+      })
+    );
+    fetchLedgersWithFilters();
+  }, [dispatch]);
 
-    if (currentType !== "all") {
-      result = result.filter((item) => item.type === currentType);
-    }
-
-    if (searchTerm.trim() !== "") {
-      const searchLower = searchTerm.toLowerCase();
-      result = result.filter(
-        (item) =>
-          item.category.toLowerCase().includes(searchLower) ||
-          (item.description &&
-            item.description.toLowerCase().includes(searchLower))
-      );
-    }
-
-    result.sort((a, b) => {
-      let comparison = 0;
-
-      if (sortField === "date") {
-        comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
-      } else if (sortField === "amount") {
-        comparison = a.amount - b.amount;
-      } else if (sortField === "category") {
-        comparison = a.category.localeCompare(b.category);
-      }
-
-      return sortDirection === "asc" ? comparison : -comparison;
-    });
-
-    setFilteredTransactions(result);
-  }, [transactions, currentType, searchTerm, sortField, sortDirection]);
+  useEffect(() => {
+    fetchLedgersWithFilters();
+  }, [currentPage, pageSize, currentType]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("th-TH", {
@@ -133,15 +117,17 @@ const Dashboard = () => {
     }).format(value);
   };
 
-  if (status === "loading") {
-    return (
-      <div className="page-container">
-        <div className="flex items-center justify-center h-64">
-          <p className="text-gray-500">กำลังโหลดข้อมูล...</p>
-        </div>
-      </div>
-    );
-  }
+  const mappedLedgers = ledgers.map((ledger) => ({
+    id: ledger.id.toString(),
+    type: ledger.type.toLowerCase() as "income" | "expense",
+    amount: ledger.amount,
+    category: ledger.ledger_category.name,
+    description: ledger.remark,
+    date: ledger.created_at,
+    createdAt: ledger.created_at,
+  }));
+
+  const isLoadingLedgers = ledgerStatus === "loading";
 
   return (
     <div className="page-container">
@@ -149,10 +135,49 @@ const Dashboard = () => {
         บันทึกรายรับรายจ่าย
       </h1>
 
+      <div className="card mb-6">
+        <div className="p-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-gray-700 font-medium mb-2">
+                วันที่เริ่มต้น
+              </label>
+              <input
+                type="date"
+                className="w-full p-2 border rounded"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                max={endDate}
+              />
+            </div>
+            <div>
+              <label className="block text-gray-700 font-medium mb-2">
+                วันที่สิ้นสุด
+              </label>
+              <input
+                type="date"
+                className="w-full p-2 border rounded"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                min={startDate}
+              />
+            </div>
+            <div className="flex items-end mb-[2px]">
+              <button
+                onClick={handleDateFilterChange}
+                className="btn-primary w-full"
+              >
+                ค้นหา
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <DashboardCard
           title="รายรับทั้งหมด"
-          amount={incomeSummary}
+          amount={dashboardData?.income || 0}
           icon={<FiArrowUpCircle />}
           bgColor="bg-white"
           textColor="text-green-600"
@@ -160,7 +185,7 @@ const Dashboard = () => {
 
         <DashboardCard
           title="รายจ่ายทั้งหมด"
-          amount={expenseSummary}
+          amount={dashboardData?.expense || 0}
           icon={<FiArrowDownCircle />}
           bgColor="bg-white"
           textColor="text-red-600"
@@ -168,10 +193,14 @@ const Dashboard = () => {
 
         <DashboardCard
           title="ยอดคงเหลือ"
-          amount={balanceSummary}
+          amount={dashboardData?.balance || 0}
           icon={<FiDollarSign />}
           bgColor="bg-white"
-          textColor={balanceSummary >= 0 ? "text-blue-600" : "text-red-600"}
+          textColor={
+            (dashboardData?.balance || 0) >= 0
+              ? "text-blue-600"
+              : "text-red-600"
+          }
         />
       </div>
 
@@ -182,21 +211,27 @@ const Dashboard = () => {
           </div>
 
           <div className="p-4">
-            {categories.length > 0 ? (
+            {dashboardData?.ledgerCategories &&
+            dashboardData.ledgerCategories.length > 0 ? (
               <ul className="divide-y">
-                {categories.map((category, index) => (
-                  <li key={index} className="py-3">
+                {dashboardData.ledgerCategories.map((category) => (
+                  <li key={category.id} className="py-3">
                     <div className="flex justify-between items-center">
                       <p className="font-medium">{category.name}</p>
                       <div className="text-right">
-                        {category.income > 0 && (
+                        {category.balance > 0 && (
                           <p className="text-green-600">
-                            + {formatCurrency(category.income)}
+                            + {formatCurrency(category.balance)}
                           </p>
                         )}
-                        {category.expense > 0 && (
+                        {category.balance < 0 && (
                           <p className="text-red-600">
-                            - {formatCurrency(category.expense)}
+                            - {formatCurrency(Math.abs(category.balance))}
+                          </p>
+                        )}
+                        {category.balance === 0 && (
+                          <p className="text-gray-500">
+                            {formatCurrency(category.balance)}
                           </p>
                         )}
                       </div>
@@ -268,55 +303,31 @@ const Dashboard = () => {
           </div>
 
           <div className="overflow-hidden">
-            {filteredTransactions.length > 0 ? (
+            {isLoadingLedgers ? (
+              <div className="flex justify-center items-center p-8">
+                <div className="loader">กำลังโหลด...</div>
+              </div>
+            ) : ledgers.length > 0 ? (
               <>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
                     <thead className="bg-gray-50 border-b">
                       <tr>
-                        <th
-                          className="py-3 px-4 cursor-pointer hover:bg-gray-100"
-                          onClick={() => handleSort("date")}
-                        >
-                          วันที่
-                          {sortField === "date" && (
-                            <span className="ml-1">
-                              {sortDirection === "asc" ? "↑" : "↓"}
-                            </span>
-                          )}
-                        </th>
-                        <th
-                          className="py-3 px-4 cursor-pointer hover:bg-gray-100"
-                          onClick={() => handleSort("category")}
-                        >
-                          หมวดหมู่
-                          {sortField === "category" && (
-                            <span className="ml-1">
-                              {sortDirection === "asc" ? "↑" : "↓"}
-                            </span>
-                          )}
-                        </th>
+                        <th className="py-3 px-4">วันที่</th>
+                        <th className="py-3 px-4">หมวดหมู่</th>
                         <th className="py-3 px-4">คำอธิบาย</th>
-                        <th
-                          className="py-3 px-4 cursor-pointer hover:bg-gray-100"
-                          onClick={() => handleSort("amount")}
-                        >
-                          จำนวนเงิน
-                          {sortField === "amount" && (
-                            <span className="ml-1">
-                              {sortDirection === "asc" ? "↑" : "↓"}
-                            </span>
-                          )}
-                        </th>
+                        <th className="py-3 px-4">จำนวนเงิน</th>
                         <th className="py-3 px-4">การดำเนินการ</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {currentItems.map((transaction) => (
+                      {mappedLedgers.map((ledger) => (
                         <TransactionItem
-                          key={transaction.id}
-                          transaction={transaction}
-                          onDelete={handleDeleteTransaction}
+                          key={ledger.id}
+                          transaction={ledger}
+                          onDelete={() =>
+                            handleDeleteLedger(parseInt(ledger.id))
+                          }
                         />
                       ))}
                     </tbody>
@@ -325,12 +336,12 @@ const Dashboard = () => {
 
                 <div className="p-4 border-t">
                   <Pagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
+                    currentPage={paginationMeta.page}
+                    totalPages={paginationMeta.totalPages}
                     onPageChange={handlePageChange}
-                    pageSize={pageSize}
+                    pageSize={paginationMeta.limit}
                     onPageSizeChange={handlePageSizeChange}
-                    totalItems={filteredTransactions.length}
+                    totalItems={paginationMeta.total}
                     pageSizeOptions={[5, 10, 20, 50, 100]}
                   />
                 </div>

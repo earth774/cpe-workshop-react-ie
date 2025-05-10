@@ -1,7 +1,8 @@
 import axios from "axios";
 
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 const api = axios.create({
-  baseURL: "https://cpe-workshop-ie.amiearth.com/api/v1",
+  baseURL: apiBaseUrl,
   headers: {
     "Content-Type": "application/json",
   },
@@ -30,10 +31,8 @@ api.interceptors.response.use(
   async (error: any): Promise<any> => {
     let errorMessage = "เกิดข้อผิดพลาดในการเชื่อมต่อ";
     const originalRequest = error.config;
-
     if (error.response) {
       errorMessage = error.response.data?.message || errorMessage;
-
       if (
         error.response.status === 401 &&
         !originalRequest._retry &&
@@ -50,10 +49,9 @@ api.interceptors.response.use(
               refresh_token: refreshToken,
             });
 
-            localStorage.setItem("access_token", response.access_token);
-            localStorage.setItem("refresh_token", response.refresh_token);
-
-            originalRequest.headers.Authorization = `Bearer ${response.access_token}`;
+            localStorage.setItem("access_token", response.data.access_token);
+            localStorage.setItem("refresh_token", response.data.refresh_token);
+            originalRequest.headers.Authorization = `Bearer ${response.data.access_token}`;
 
             isRefreshing = false;
 
@@ -91,7 +89,6 @@ api.interceptors.response.use(
     } else {
       errorMessage = error.message || errorMessage;
     }
-
     return Promise.reject(errorMessage);
   }
 );
@@ -170,9 +167,9 @@ export const getLedgers = (
   try {
     return api.get("/ledger", {
       params: {
+        ...filters,
         page,
         limit,
-        ...filters,
       },
     });
   } catch (error) {

@@ -1,137 +1,144 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import { Transaction } from "../../types";
 import { RootState } from "../index";
+import { getDashboardData, getLedgers, deleteLedger } from "../../services/api";
+
+export interface Ledger {
+  id: number;
+  ledger_category_id: number;
+  user_id: number;
+  remark: string;
+  type: "INCOME" | "EXPENSE";
+  amount: number;
+  status_id: number;
+  created_at: string;
+  updated_at: string;
+  ledger_category: {
+    id: number;
+    name: string;
+    status_id: number;
+    created_at: string;
+    updated_at: string;
+  };
+}
+
+export interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
 
 interface TransactionsState {
   transactions: Transaction[];
   status: "idle" | "loading" | "succeeded" | "failed";
   error: string | null;
+  dashboardData: {
+    balance: number;
+    income: number;
+    expense: number;
+    ledgerCategories: Array<{
+      id: number;
+      name: string;
+      status_id: number;
+      created_at: string;
+      updated_at: string;
+      balance: number;
+    }>;
+  } | null;
+
+  ledgers: Ledger[];
+  ledgerStatus: "idle" | "loading" | "succeeded" | "failed";
+  ledgerError: string | null;
+  paginationMeta: PaginationMeta;
 }
 
 const initialState: TransactionsState = {
   transactions: [],
   status: "idle",
   error: null,
+  dashboardData: null,
+
+  ledgers: [],
+  ledgerStatus: "idle",
+  ledgerError: null,
+  paginationMeta: {
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 0,
+  },
 };
 
-export const fetchTransactions = createAsyncThunk<
-  Transaction[],
-  void,
+export const fetchDashboardData = createAsyncThunk<
+  any,
+  { startDate?: string; endDate?: string },
   { state: RootState }
->("transactions/fetchTransactions", async (_, { getState }) => {
-  const { auth } = getState();
-  if (!auth.currentUser) return [];
+>("transactions/fetchDashboardData", async ({ startDate, endDate }, {}) => {
+  const response = await getDashboardData(startDate, endDate);
 
-  const userId = auth.currentUser.id;
-  const storageKey = `transactions-${userId}`;
-  const saved = localStorage.getItem(storageKey);
-
-  if (saved) {
-    return JSON.parse(saved) as Transaction[];
-  } else {
-    const demoTransactions = generateDemoTransactions();
-    localStorage.setItem(storageKey, JSON.stringify(demoTransactions));
-    return demoTransactions;
-  }
+  return response;
 });
 
-const generateDemoTransactions = (): Transaction[] => {
-  const today = new Date();
-  const oneDay = 24 * 60 * 60 * 1000;
+export const fetchLedgers = createAsyncThunk<
+  { data: Ledger[]; meta: any },
+  {
+    page?: number;
+    limit?: number;
+    startDate?: string;
+    endDate?: string;
+    type?: string;
+    search?: string;
+    sortDirection?: "asc" | "desc";
+  },
+  { state: RootState }
+>("transactions/fetchLedgers", async (params, {}) => {
+  const {
+    page = 1,
+    limit = 10,
+    startDate,
+    endDate,
+    type,
+    search,
+    sortDirection,
+  } = params;
 
-  return [
-    {
-      id: "1",
-      type: "income",
-      amount: 15000,
-      category: "เงินเดือน",
-      date: new Date(today.getTime() - oneDay * 2).toISOString(),
-      description: "เงินเดือนเดือนนี้",
-      createdAt: new Date(today.getTime() - oneDay * 2).toISOString(),
+  const filters: any = {};
+  if (endDate) filters.endDate = endDate;
+  if (startDate) filters.startDate = startDate;
+  if (type && type !== "all") filters.type = type.toUpperCase();
+  if (search) filters.search = search;
+  if (sortDirection) filters.sortDirection = sortDirection;
+
+  const response = await getLedgers(page, limit, filters);
+
+  return {
+    data: response.data.data,
+    meta: {
+      total: response.data.meta.total,
+      page: parseInt(response.data.meta.page),
+      limit: parseInt(response.data.meta.limit),
+      totalPages: response.data.meta.totalPages,
     },
-    {
-      id: "2",
-      type: "expense",
-      amount: 2500,
-      category: "ค่าเช่า",
-      date: new Date(today.getTime() - oneDay * 3).toISOString(),
-      description: "ค่าเช่าห้องประจำเดือน",
-      createdAt: new Date(today.getTime() - oneDay * 3).toISOString(),
-    },
-    {
-      id: "3",
-      type: "expense",
-      amount: 500,
-      category: "อาหาร",
-      date: new Date(today.getTime() - oneDay * 1).toISOString(),
-      description: "มื้อกลางวัน",
-      createdAt: new Date(today.getTime() - oneDay * 1).toISOString(),
-    },
-    {
-      id: "4",
-      type: "income",
-      amount: 3000,
-      category: "งานพิเศษ",
-      date: new Date(today.getTime()).toISOString(),
-      description: "งานฟรีแลนซ์",
-      createdAt: new Date(today.getTime()).toISOString(),
-    },
-    {
-      id: "5",
-      type: "expense",
-      amount: 1500,
-      category: "ค่าน้ำค่าไฟ",
-      date: new Date(today.getTime() - oneDay * 4).toISOString(),
-      description: "ค่าน้ำค่าไฟเดือนนี้",
-      createdAt: new Date(today.getTime() - oneDay * 4).toISOString(),
-    },
-    {
-      id: "6",
-      type: "expense",
-      amount: 300,
-      category: "ความบันเทิง",
-      date: new Date(today.getTime() - oneDay * 2).toISOString(),
-      description: "ดูหนัง",
-      createdAt: new Date(today.getTime() - oneDay * 2).toISOString(),
-    },
-    {
-      id: "7",
-      type: "expense",
-      amount: 800,
-      category: "อาหาร",
-      date: new Date(today.getTime() - oneDay * 1).toISOString(),
-      description: "ซื้อของที่ซุปเปอร์มาร์เก็ต",
-      createdAt: new Date(today.getTime() - oneDay * 1).toISOString(),
-    },
-    {
-      id: "8",
-      type: "income",
-      amount: 500,
-      category: "ของขวัญ",
-      date: new Date(today.getTime() - oneDay * 5).toISOString(),
-      description: "พ่อแม่ให้",
-      createdAt: new Date(today.getTime() - oneDay * 5).toISOString(),
-    },
-    {
-      id: "9",
-      type: "expense",
-      amount: 1200,
-      category: "การเดินทาง",
-      date: new Date(today.getTime() - oneDay * 6).toISOString(),
-      description: "ค่าแท็กซี่",
-      createdAt: new Date(today.getTime() - oneDay * 6).toISOString(),
-    },
-    {
-      id: "10",
-      type: "expense",
-      amount: 2000,
-      category: "ช้อปปิ้ง",
-      date: new Date(today.getTime() - oneDay * 7).toISOString(),
-      description: "ซื้อเสื้อใหม่",
-      createdAt: new Date(today.getTime() - oneDay * 7).toISOString(),
-    },
-  ];
-};
+  };
+});
+
+export const deleteLedgerItem = createAsyncThunk<
+  number,
+  number,
+  { state: RootState }
+>("transactions/deleteLedgerItem", async (id, { dispatch, getState }) => {
+  await deleteLedger(id);
+
+  const { transactions } = getState();
+  const { page, limit } = transactions.paginationMeta;
+
+  dispatch(fetchLedgers({ page, limit }));
+
+  dispatch(fetchDashboardData({}));
+
+  return id;
+});
 
 export const addTransaction = createAsyncThunk<
   Transaction,
@@ -158,6 +165,8 @@ export const addTransaction = createAsyncThunk<
       JSON.stringify(updatedTransactions)
     );
 
+    dispatch(fetchDashboardData({}));
+
     return newTransaction;
   }
 );
@@ -168,7 +177,7 @@ export const updateTransaction = createAsyncThunk<
   { state: RootState }
 >(
   "transactions/updateTransaction",
-  async ({ id, updatedData }, { getState }) => {
+  async ({ id, updatedData }, { getState, dispatch }) => {
     const { auth } = getState();
     if (!auth.currentUser) throw new Error("No authenticated user");
 
@@ -189,6 +198,8 @@ export const updateTransaction = createAsyncThunk<
       JSON.stringify(updatedTransactions)
     );
 
+    dispatch(fetchDashboardData({}));
+
     return {
       id,
       updatedData: { ...updatedData, updatedAt: new Date().toISOString() },
@@ -200,7 +211,7 @@ export const deleteTransaction = createAsyncThunk<
   string,
   string,
   { state: RootState }
->("transactions/deleteTransaction", async (id, { getState }) => {
+>("transactions/deleteTransaction", async (id, { getState, dispatch }) => {
   const { auth } = getState();
   if (!auth.currentUser) throw new Error("No authenticated user");
 
@@ -215,6 +226,8 @@ export const deleteTransaction = createAsyncThunk<
     JSON.stringify(updatedTransactions)
   );
 
+  dispatch(fetchDashboardData({}));
+
   return id;
 });
 
@@ -224,29 +237,45 @@ const transactionsSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
-
-      .addCase(fetchTransactions.pending, (state) => {
+      .addCase(fetchDashboardData.pending, (state) => {
         state.status = "loading";
       })
-      .addCase(
-        fetchTransactions.fulfilled,
-        (state, action: PayloadAction<Transaction[]>) => {
-          state.status = "succeeded";
-          state.transactions = action.payload;
-        }
-      )
-      .addCase(fetchTransactions.rejected, (state, action) => {
+      .addCase(fetchDashboardData.fulfilled, (state, action) => {
+        state.status = "succeeded";
+        state.dashboardData = action.payload.data;
+      })
+      .addCase(fetchDashboardData.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.error.message || null;
       })
-
+      .addCase(fetchLedgers.pending, (state) => {
+        state.ledgerStatus = "loading";
+      })
+      .addCase(fetchLedgers.fulfilled, (state, action) => {
+        state.ledgerStatus = "succeeded";
+        state.ledgers = action.payload.data;
+        state.paginationMeta = action.payload.meta;
+      })
+      .addCase(fetchLedgers.rejected, (state, action) => {
+        state.ledgerStatus = "failed";
+        state.ledgerError = action.error.message || null;
+      })
+      .addCase(deleteLedgerItem.pending, (state) => {
+        state.ledgerStatus = "loading";
+      })
+      .addCase(deleteLedgerItem.fulfilled, (state, _) => {
+        state.ledgerStatus = "succeeded";
+      })
+      .addCase(deleteLedgerItem.rejected, (state, action) => {
+        state.ledgerStatus = "failed";
+        state.ledgerError = action.error.message || null;
+      })
       .addCase(
         addTransaction.fulfilled,
         (state, action: PayloadAction<Transaction>) => {
           state.transactions.unshift(action.payload);
         }
       )
-
       .addCase(updateTransaction.fulfilled, (state, action) => {
         const { id, updatedData } = action.payload;
         const index = state.transactions.findIndex((t) => t.id === id);
@@ -257,7 +286,6 @@ const transactionsSlice = createSlice({
           };
         }
       })
-
       .addCase(
         deleteTransaction.fulfilled,
         (state, action: PayloadAction<string>) => {
@@ -268,5 +296,22 @@ const transactionsSlice = createSlice({
       );
   },
 });
+
+export const selectDashboardData = (state: RootState) =>
+  state.transactions.dashboardData;
+export const selectDashboardBalance = (state: RootState) =>
+  state.transactions.dashboardData?.balance || 0;
+export const selectDashboardIncome = (state: RootState) =>
+  state.transactions.dashboardData?.income || 0;
+export const selectDashboardExpense = (state: RootState) =>
+  state.transactions.dashboardData?.expense || 0;
+export const selectDashboardCategories = (state: RootState) =>
+  state.transactions.dashboardData?.ledgerCategories || [];
+
+export const selectLedgers = (state: RootState) => state.transactions.ledgers;
+export const selectLedgerStatus = (state: RootState) =>
+  state.transactions.ledgerStatus;
+export const selectPaginationMeta = (state: RootState) =>
+  state.transactions.paginationMeta;
 
 export default transactionsSlice.reducer;
