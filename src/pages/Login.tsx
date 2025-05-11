@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FiMail, FiKey, FiCreditCard } from "react-icons/fi";
+import { useAppSelector } from "../store/hooks";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
+  const status = useAppSelector((state)=> state.auth.status)
+  
   const handleSubmit = (e: any) => {
     e.preventDefault();
     localStorage.setItem("access_token", "testing...");
@@ -28,7 +31,7 @@ const Login = () => {
           <div className="bg-gradient-to-r from-primary to-primary-dark p-6 text-white">
             <h2 className="text-2xl font-bold">เข้าสู่ระบบ</h2>
             <p className="text-primary-50 mt-1">
-              ยินดีต้อนรับกลับมาสู่บัญชีของคุณ
+              ยินดีต้อนรับกลับมาสู่บัญชีของคุณ : {status}
             </p>
           </div>
 
