@@ -1,26 +1,43 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { FiMail, FiKey, FiCreditCard } from "react-icons/fi";
-import { useAppSelector } from "../store/hooks";
+import { FiMail, FiAlertCircle, FiKey, FiCreditCard } from "react-icons/fi";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { login, clearError } from "../store/auth/authSlice";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
-  const status = useAppSelector((state)=> state.auth.status)
-  
-  const handleSubmit = (e: any) => {
+  const { status, error } = useAppSelector((state) => state.auth);
+
+  useEffect(() => {
+    setIsLoaded(true);
+
+    dispatch(clearError());
+  }, [dispatch]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem("access_token", "testing...");
-    localStorage.setItem("refresh_token", "testing...");
-    console.log("Form submitted with:", { email, password });
-    navigate("/");
+
+    try {
+      await dispatch(login({ email, password }));
+      navigate("/", { replace: true });
+    } catch (err) {
+      console.error("Login failed:", err);
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-primary/20 p-4">
-      <div className="w-full max-w-md">
+      <div
+        className={`w-full max-w-md transition-all duration-700 ease-out ${
+          isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+        }`}
+      >
         <div className="flex justify-center mb-6">
           <div className="bg-primary/90 text-white p-4 rounded-full shadow-lg shadow-primary/20">
             <FiCreditCard className="w-8 h-8" />
@@ -31,12 +48,17 @@ const Login = () => {
           <div className="bg-gradient-to-r from-primary to-primary-dark p-6 text-white">
             <h2 className="text-2xl font-bold">เข้าสู่ระบบ</h2>
             <p className="text-primary-50 mt-1">
-              ยินดีต้อนรับกลับมาสู่บัญชีของคุณ : {status}
+              ยินดีต้อนรับกลับมาสู่บัญชีของคุณ
             </p>
           </div>
 
           <div className="p-8">
-            {/* ส่วนแสดงข้อความ error จะถูกเพิ่มที่นี่ */}
+            {error && (
+              <div className="bg-red-50 text-red-600 p-4 rounded-lg flex items-start mb-6 border-l-4 border-red-500 animate-fadeIn">
+                <FiAlertCircle className="mr-3 mt-0.5 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
@@ -88,9 +110,36 @@ const Login = () => {
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full py-3 px-4 bg-gradient-to-r from-primary to-primary-dark text-white rounded-lg font-medium shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0"
+                  disabled={status === "loading"}
+                  className="w-full py-3 px-4 bg-gradient-to-r from-primary to-primary-dark text-white rounded-lg font-medium shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none flex justify-center items-center space-x-2"
                 >
-                  เข้าสู่ระบบ
+                  {status === "loading" ? (
+                    <>
+                      <svg
+                        className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                      </svg>
+                      <span>กำลังเข้าสู่ระบบ...</span>
+                    </>
+                  ) : (
+                    <span>เข้าสู่ระบบ</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -116,5 +165,6 @@ const Login = () => {
     </div>
   );
 };
+
 
 export default Login;
