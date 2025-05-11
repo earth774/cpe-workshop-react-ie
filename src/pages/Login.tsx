@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { FiMail, FiAlertCircle, FiKey, FiCreditCard } from "react-icons/fi";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { login, clearError } from "../store/auth/authSlice";
+import { fetchDashboardData } from "@/store/transactions/transactionSlice";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -14,11 +15,12 @@ const Login = () => {
 
   const { status, error } = useAppSelector((state) => state.auth);
 
-  useEffect(() => {
-    setIsLoaded(true);
+  useEffect
+    (() => {
+      setIsLoaded(true);
 
-    dispatch(clearError());
-  }, [dispatch]);
+      dispatch(clearError());
+    }, [dispatch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,9 +36,8 @@ const Login = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-primary/20 p-4">
       <div
-        className={`w-full max-w-md transition-all duration-700 ease-out ${
-          isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-        }`}
+        className={`w-full max-w-md transition-all duration-700 ease-out ${isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+          }`}
       >
         <div className="flex justify-center mb-6">
           <div className="bg-primary/90 text-white p-4 rounded-full shadow-lg shadow-primary/20">

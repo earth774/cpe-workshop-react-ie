@@ -78,6 +78,48 @@ export const fetchDashboardData = createAsyncThunk<
     return response;
 });
 
+
+export const fetchLedgers = createAsyncThunk<
+  { data: Ledger[]; meta: any },
+  {
+    page?: number;
+    limit?: number;
+    startDate?: string;
+    endDate?: string;
+    type?: string;
+    search?: string;
+    sortDirection?: "asc" | "desc";
+  },
+  { state: RootState }
+>("transactions/fetchLedgers", async (params, {}) => {
+  const {
+    page = 1,
+    limit = 10,
+    startDate,
+    endDate,
+    type,
+    search,
+  } = params;
+
+  const filters: any = {};
+  if (endDate) filters.endDate = endDate;
+  if (startDate) filters.startDate = startDate;
+  if (type && type !== "all") filters.type = type.toUpperCase();
+  if (search) filters.search = search;
+
+  const response = await getLedgers(page, limit, filters);
+
+  return {
+    data: response.data.data,
+    meta: {
+      total: response.data.meta.total,
+      page: parseInt(response.data.meta.page),
+      limit: parseInt(response.data.meta.limit),
+      totalPages: response.data.meta.totalPages,
+    },
+  };
+});
+
 const transactionsSlice = createSlice({
     name: "transaction", initialState, reducers: {}, extraReducers: (builder) => {
         builder.addCase(fetchDashboardData.pending, (state) => {
@@ -86,6 +128,9 @@ const transactionsSlice = createSlice({
         .addCase(fetchDashboardData.fulfilled, (state,action) => {
             state.status = "succeeded";
             state.dashboardData = action.payload.data;
+        })
+        .addCase(fetchLedgers.fulfilled,(state,action)=>{
+            state.ledgers = action.payload.data;
         })
     },
 })

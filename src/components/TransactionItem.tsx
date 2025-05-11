@@ -10,7 +10,7 @@ interface TransactionItemProps {
 }
 
 const TransactionItem = ({ transaction, onDelete }: TransactionItemProps) => {
-  const { id, type, amount, category, date, description } = transaction;
+  const { id, type, amount, ledger_category, date, remark } = transaction;
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("th-TH", {
@@ -32,10 +32,10 @@ const TransactionItem = ({ transaction, onDelete }: TransactionItemProps) => {
             type === "income" ? "bg-income" : "bg-expense"
           }`}
         ></span>
-        {formatDate(date)}
+        {date}
       </td>
-      <td className="py-3 px-4 font-medium">{category}</td>
-      <td className="py-3 px-4 text-gray-500">{description}</td>
+      <td className="py-3 px-4 font-medium">{ledger_category.name}</td>
+      <td className="py-3 px-4 text-gray-500">{remark}</td>
       <td
         className={`py-3 px-4 font-medium ${
           type === "income" ? "text-income" : "text-expense"

@@ -11,12 +11,12 @@ import TransactionItem from "../components/TransactionItem";
 import Pagination from "../components/Pagination";
 import DashboardCard from "../components/DashboardCard";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { fetchDashboardData } from "@/store/transactions/transactionSlice";
+import { fetchDashboardData,fetchLedgers } from "@/store/transactions/transactionSlice";
 
 
 const Dashboard = () => {
   const dispatch = useAppDispatch();
-  const dashboardData = useAppSelector((state) => state.transaction.dashboardData);
+  const {dashboardData,ledgers} = useAppSelector((state) => state.transaction);
 
   const getOneMonthAgoDate = () => {
     const date = new Date();
@@ -39,58 +39,20 @@ const Dashboard = () => {
 
   useEffect(() => {
     dispatch(fetchDashboardData({ startDate, endDate }))
+    fetchLedgersWithFilters()
   }, [])
 
-  const sampleLedgers = [
-    {
-      id: "1",
-      type: "income",
-      amount: 30000,
-      category: "เงินเดือน",
-      description: "เงินเดือนเดือนพฤษภาคม",
-      date: "2025-05-01",
-      createdAt: "2025-05-01",
-    },
-    {
-      id: "2",
-      type: "income",
-      amount: 20000,
-      category: "รายได้เสริม",
-      description: "งานฟรีแลนซ์",
-      date: "2025-05-05",
-      createdAt: "2025-05-05",
-    },
-    {
-      id: "3",
-      type: "expense",
-      amount: 5000,
-      category: "อาหาร",
-      description: "ค่าอาหารประจำเดือน",
-      date: "2025-05-10",
-      createdAt: "2025-05-10",
-    },
-    {
-      id: "4",
-      type: "expense",
-      amount: 3000,
-      category: "การเดินทาง",
-      description: "ค่าน้ำมันรถ",
-      date: "2025-05-15",
-      createdAt: "2025-05-15",
-    },
-    {
-      id: "5",
-      type: "expense",
-      amount: 2000,
-      category: "ความบันเทิง",
-      description: "ดูหนัง",
-      date: "2025-05-20",
-      createdAt: "2025-05-20",
-    },
-  ];
+  const fetchLedgersWithFilters = ()=>{
+    dispatch(fetchLedgers(
+      {page:currentPage,
+      limit:pageSize,
+      startDate,
+      endDate,}
+    ))
+  }
 
   const handleDateFilterChange = () => {
-    console.log("ค้นหาด้วยวันที่:", { startDate, endDate });
+    dispatch(fetchDashboardData({ startDate, endDate }))
   };
 
   const handlePageChange = (pageNumber: any) => {
@@ -300,7 +262,7 @@ const Dashboard = () => {
           </div>
 
           <div className="overflow-hidden">
-            {sampleLedgers.length > 0 ? (
+            {ledgers.length > 0 ? (
               <>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
@@ -314,7 +276,7 @@ const Dashboard = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {sampleLedgers.map((ledger: any) => (
+                      {ledgers.map((ledger: any) => (
                         <TransactionItem
                           key={ledger.id}
                           transaction={ledger}
