@@ -1,15 +1,14 @@
 import { Link, useNavigate } from "react-router-dom";
 import { FiLogOut, FiCreditCard } from "react-icons/fi";
-import { useAppDispatch } from "../store/hooks";
-import { logout } from "../store/auth/authSlice";
 
 const Navbar = () => {
-  const dispatch = useAppDispatch();
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    dispatch(logout());
-    navigate("/login", { replace: true });
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    console.log("ออกจากระบบ");
+    navigate("/login");
   };
 
   return (

@@ -1,17 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useAppSelector, useAppDispatch } from "../store/hooks";
-import {
-  fetchDashboardData,
-  fetchLedgers,
-  deleteLedgerItem,
-  selectLedgers,
-  selectLedgerStatus,
-  selectPaginationMeta,
-} from "../store/transactions/transactionsSlice";
-import TransactionItem from "../components/TransactionItem";
-import Pagination from "../components/Pagination";
-import DashboardCard from "../components/DashboardCard";
 import {
   FiArrowUpCircle,
   FiArrowDownCircle,
@@ -19,19 +7,11 @@ import {
   FiPlusCircle,
   FiFilter,
 } from "react-icons/fi";
+import TransactionItem from "../components/TransactionItem";
+import Pagination from "../components/Pagination";
+import DashboardCard from "../components/DashboardCard";
 
 const Dashboard = () => {
-  const dispatch = useAppDispatch();
-  const dashboardData = useAppSelector(
-    (state) => state.transactions.dashboardData
-  );
-
-  const ledgers = useAppSelector(selectLedgers);
-  const ledgerStatus = useAppSelector(selectLedgerStatus);
-  const paginationMeta = useAppSelector(selectPaginationMeta);
-
-  console.log("ledgers : ", ledgers);
-
   const getOneMonthAgoDate = () => {
     const date = new Date();
     date.setMonth(date.getMonth() - 1);
@@ -44,72 +24,102 @@ const Dashboard = () => {
     return date.toISOString().split("T")[0];
   };
 
-  const [startDate, setStartDate] = useState<string>(getOneMonthAgoDate());
-  const [endDate, setEndDate] = useState<string>(getOneMonthLaterDate());
+  const [startDate, setStartDate] = useState(getOneMonthAgoDate());
+  const [endDate, setEndDate] = useState(getOneMonthLaterDate());
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [currentType, setCurrentType] = useState<"all" | "income" | "expense">(
-    "all"
-  );
+  const [currentType, setCurrentType] = useState("all");
 
-  const fetchLedgersWithFilters = () => {
-    dispatch(
-      fetchLedgers({
-        page: currentPage,
-        limit: pageSize,
-        startDate,
-        endDate,
-        type: currentType,
-      })
-    );
+  const dashboardData = {
+    income: 50000,
+    expense: 30000,
+    balance: 20000,
+    ledgerCategories: [
+      { id: 1, name: "เงินเดือน", balance: 30000 },
+      { id: 2, name: "อาหาร", balance: -5000 },
+      { id: 3, name: "การเดินทาง", balance: -3000 },
+      { id: 4, name: "ความบันเทิง", balance: -2000 },
+      { id: 5, name: "รายได้เสริม", balance: 20000 },
+    ],
   };
 
-  const handlePageChange = (pageNumber: number) => {
+  const sampleLedgers = [
+    {
+      id: "1",
+      type: "income",
+      amount: 30000,
+      category: "เงินเดือน",
+      description: "เงินเดือนเดือนพฤษภาคม",
+      date: "2025-05-01",
+      createdAt: "2025-05-01",
+    },
+    {
+      id: "2",
+      type: "income",
+      amount: 20000,
+      category: "รายได้เสริม",
+      description: "งานฟรีแลนซ์",
+      date: "2025-05-05",
+      createdAt: "2025-05-05",
+    },
+    {
+      id: "3",
+      type: "expense",
+      amount: 5000,
+      category: "อาหาร",
+      description: "ค่าอาหารประจำเดือน",
+      date: "2025-05-10",
+      createdAt: "2025-05-10",
+    },
+    {
+      id: "4",
+      type: "expense",
+      amount: 3000,
+      category: "การเดินทาง",
+      description: "ค่าน้ำมันรถ",
+      date: "2025-05-15",
+      createdAt: "2025-05-15",
+    },
+    {
+      id: "5",
+      type: "expense",
+      amount: 2000,
+      category: "ความบันเทิง",
+      description: "ดูหนัง",
+      date: "2025-05-20",
+      createdAt: "2025-05-20",
+    },
+  ];
+
+  const handleDateFilterChange = () => {
+    console.log("ค้นหาด้วยวันที่:", { startDate, endDate });
+  };
+
+  const handlePageChange = (pageNumber: any) => {
     setCurrentPage(pageNumber);
+    console.log("เปลี่ยนหน้าเป็น:", pageNumber);
   };
 
-  const handlePageSizeChange = (newSize: number) => {
+  const handlePageSizeChange = (newSize: any) => {
     setPageSize(newSize);
     setCurrentPage(1);
+    console.log("เปลี่ยนจำนวนรายการต่อหน้าเป็น:", newSize);
   };
 
-  const handleTypeFilter = (type: "all" | "income" | "expense") => {
+  const handleTypeFilter = (type: any) => {
     setCurrentType(type);
     setCurrentPage(1);
+    console.log("กรองตามประเภท:", type);
   };
 
-  const handleDeleteLedger = (id: number) => {
+  const handleDeleteLedger = (id: any) => {
     if (window.confirm("คุณต้องการลบรายการนี้ใช่หรือไม่?")) {
-      dispatch(deleteLedgerItem(id));
+      console.log("ลบรายการ ID:", id);
     }
   };
 
-  const handleDateFilterChange = () => {
-    dispatch(
-      fetchDashboardData({
-        startDate,
-        endDate,
-      })
-    );
-    fetchLedgersWithFilters();
-  };
-
-  useEffect(() => {
-    dispatch(
-      fetchDashboardData({
-        startDate,
-        endDate,
-      })
-    );
-    fetchLedgersWithFilters();
-  }, [dispatch]);
-
-  useEffect(() => {
-    fetchLedgersWithFilters();
-  }, [currentPage, pageSize, currentType]);
-
-  const formatCurrency = (value: number) => {
+  const formatCurrency = (value: any) => {
     return new Intl.NumberFormat("th-TH", {
       style: "currency",
       currency: "THB",
@@ -117,17 +127,12 @@ const Dashboard = () => {
     }).format(value);
   };
 
-  const mappedLedgers = ledgers.map((ledger) => ({
-    id: ledger.id.toString(),
-    type: ledger.type.toLowerCase() as "income" | "expense",
-    amount: ledger.amount,
-    category: ledger.ledger_category.name,
-    description: ledger.remark,
-    date: ledger.created_at,
-    createdAt: ledger.created_at,
-  }));
-
-  const isLoadingLedgers = ledgerStatus === "loading";
+  const paginationMeta = {
+    page: currentPage,
+    limit: pageSize,
+    total: 50,
+    totalPages: 5,
+  };
 
   return (
     <div className="page-container">
@@ -177,7 +182,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <DashboardCard
           title="รายรับทั้งหมด"
-          amount={dashboardData?.income || 0}
+          amount={dashboardData.income}
           icon={<FiArrowUpCircle />}
           bgColor="bg-white"
           textColor="text-green-600"
@@ -185,7 +190,7 @@ const Dashboard = () => {
 
         <DashboardCard
           title="รายจ่ายทั้งหมด"
-          amount={dashboardData?.expense || 0}
+          amount={dashboardData.expense}
           icon={<FiArrowDownCircle />}
           bgColor="bg-white"
           textColor="text-red-600"
@@ -193,13 +198,11 @@ const Dashboard = () => {
 
         <DashboardCard
           title="ยอดคงเหลือ"
-          amount={dashboardData?.balance || 0}
+          amount={dashboardData.balance}
           icon={<FiDollarSign />}
           bgColor="bg-white"
           textColor={
-            (dashboardData?.balance || 0) >= 0
-              ? "text-blue-600"
-              : "text-red-600"
+            dashboardData.balance >= 0 ? "text-blue-600" : "text-red-600"
           }
         />
       </div>
@@ -211,7 +214,7 @@ const Dashboard = () => {
           </div>
 
           <div className="p-4">
-            {dashboardData?.ledgerCategories &&
+            {dashboardData.ledgerCategories &&
             dashboardData.ledgerCategories.length > 0 ? (
               <ul className="divide-y">
                 {dashboardData.ledgerCategories.map((category) => (
@@ -303,11 +306,7 @@ const Dashboard = () => {
           </div>
 
           <div className="overflow-hidden">
-            {isLoadingLedgers ? (
-              <div className="flex justify-center items-center p-8">
-                <div className="loader">กำลังโหลด...</div>
-              </div>
-            ) : ledgers.length > 0 ? (
+            {sampleLedgers.length > 0 ? (
               <>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left">
@@ -321,7 +320,7 @@ const Dashboard = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {mappedLedgers.map((ledger) => (
+                      {sampleLedgers.map((ledger: any) => (
                         <TransactionItem
                           key={ledger.id}
                           transaction={ledger}

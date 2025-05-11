@@ -1,28 +1,26 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { useAppDispatch } from "../store/hooks";
-import {
-  fetchLedgers,
-  fetchDashboardData,
-} from "../store/transactions/transactionsSlice";
 import { format } from "date-fns";
 import { FiDollarSign, FiFileText, FiTag, FiArrowLeft } from "react-icons/fi";
-import {
-  createLedger,
-  updateLedger,
-  getLedgerById,
-  getCategories,
-} from "../services/api";
 
 const TransactionForm = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams();
   const navigate = useNavigate();
-  const dispatch = useAppDispatch();
 
   const [loading, setLoading] = useState(false);
-  const [categories, setCategories] = useState([]);
-
   const [isEditMode, setIsEditMode] = useState(false);
+
+  const [categories, setCategories] = useState([
+    { id: 1, name: "เงินเดือน", type: "INCOME" },
+    { id: 2, name: "โบนัส", type: "INCOME" },
+    { id: 3, name: "รายได้เสริม", type: "INCOME" },
+    { id: 4, name: "อาหาร", type: "EXPENSE" },
+    { id: 5, name: "การเดินทาง", type: "EXPENSE" },
+    { id: 6, name: "ความบันเทิง", type: "EXPENSE" },
+    { id: 7, name: "ค่าเช่า", type: "EXPENSE" },
+    { id: 8, name: "สาธารณูปโภค", type: "EXPENSE" },
+  ]);
+
   const [formData, setFormData] = useState({
     type: "EXPENSE",
     amount: "",
@@ -32,52 +30,26 @@ const TransactionForm = () => {
   });
 
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await getCategories();
-        setCategories(response.data);
-      } catch (error) {
-        console.error("Error fetching categories:", error);
-      }
-    };
+    if (id) {
+      setIsEditMode(true);
+      setLoading(true);
 
-    fetchCategories();
-  }, []);
+      setTimeout(() => {
+        const sampleData = {
+          type: "EXPENSE",
+          amount: "500",
+          ledger_category_id: "4",
+          date: "2025-05-01",
+          remark: "ค่าอาหารกลางวัน",
+        };
 
-  useEffect(() => {
-    const fetchTransactionData = async () => {
-      if (id) {
-        setIsEditMode(true);
-        setLoading(true);
+        setFormData(sampleData);
+        setLoading(false);
+      }, 500);
+    }
+  }, [id]);
 
-        try {
-          const response = await getLedgerById(id);
-          const ledger = response.data;
-
-          setFormData({
-            type: ledger.type,
-            amount: ledger.amount.toString(),
-            ledger_category_id: ledger.ledger_category_id.toString(),
-            date: format(new Date(ledger.created_at), "yyyy-MM-dd"),
-            remark: ledger.remark || "",
-          });
-        } catch (error) {
-          console.error("Error fetching transaction details:", error);
-          navigate("/transactions");
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchTransactionData();
-  }, [id, navigate]);
-
-  const handleChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >
-  ) => {
+  const handleChange = (e: any) => {
     const { name, value } = e.target;
 
     if (name === "amount") {
@@ -89,7 +61,7 @@ const TransactionForm = () => {
     }
   };
 
-  const handleTypeChange = (type: "INCOME" | "EXPENSE") => {
+  const handleTypeChange = (type: any) => {
     setFormData((prev) => ({
       ...prev,
       type,
@@ -97,7 +69,7 @@ const TransactionForm = () => {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: any) => {
     e.preventDefault();
 
     if (!formData.amount || !formData.ledger_category_id || !formData.date) {
@@ -107,37 +79,27 @@ const TransactionForm = () => {
 
     setLoading(true);
 
-    try {
-      const transactionData = {
-        type: formData.type,
+    setTimeout(() => {
+      console.log("บันทึกข้อมูล:", {
+        ...formData,
         amount: parseFloat(formData.amount),
         ledger_category_id: parseInt(formData.ledger_category_id),
-        remark: formData.remark,
-      };
+      });
 
-      if (isEditMode && id) {
-        await updateLedger(id, transactionData);
-      } else {
-        await createLedger(transactionData);
-      }
-
-      dispatch(fetchLedgers({ page: 1, limit: 10 }));
-      dispatch(fetchDashboardData({}));
-
-      navigate("/");
-    } catch (error) {
-      console.error("Error saving transaction:", error);
-      alert("เกิดข้อผิดพลาดในการบันทึกข้อมูล");
-    } finally {
       setLoading(false);
-    }
+      navigate("/");
+    }, 1000);
   };
+
+  const filteredCategories = categories.filter(
+    (category) => category.type === formData.type
+  );
 
   return (
     <div className="page-container">
       <div className="mb-6">
         <button
-          onClick={() => navigate("/transactions")}
+          onClick={() => navigate("/")}
           className="flex items-center text-gray-600 hover:text-gray-900"
         >
           <FiArrowLeft className="mr-2" />
@@ -226,7 +188,7 @@ const TransactionForm = () => {
                 required
               >
                 <option value="">เลือกหมวดหมู่</option>
-                {categories.map((category: any) => (
+                {filteredCategories.map((category) => (
                   <option key={category.id} value={category.id}>
                     {category.name}
                   </option>

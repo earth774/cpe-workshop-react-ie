@@ -9,8 +9,6 @@ import {
   FiShield,
   FiGlobe,
 } from "react-icons/fi";
-import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { register, clearError } from "../store/auth/authSlice";
 
 const Register = () => {
   const [name, setName] = useState("");
@@ -18,20 +16,11 @@ const Register = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [googleId, setGoogleId] = useState("");
-  const [validationError, setValidationError] = useState<string | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [validationError, setValidationError] = useState<string>("");
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [showGoogleId, setShowGoogleId] = useState(false);
 
-  const dispatch = useAppDispatch();
   const navigate = useNavigate();
-
-  const { status, error } = useAppSelector((state) => state.auth);
-
-  useEffect(() => {
-    setIsLoaded(true);
-    dispatch(clearError());
-  }, [dispatch]);
 
   useEffect(() => {
     if (!password) {
@@ -81,7 +70,7 @@ const Register = () => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: any) => {
     e.preventDefault();
 
     if (password !== confirmPassword) {
@@ -94,20 +83,9 @@ const Register = () => {
       return;
     }
 
-    setValidationError(null);
-
-    try {
-      const userData = {
-        name,
-        email,
-        password,
-        ...(googleId && { google_id: googleId }),
-      };
-      await dispatch(register(userData));
-      navigate("/login");
-    } catch (err) {
-      console.error("Registration failed:", err);
-    }
+    setValidationError("");
+    console.log("ข้อมูลการสมัคร:", { name, email, password, googleId });
+    navigate("/login");
   };
 
   const toggleGoogleIdField = () => {
@@ -119,11 +97,7 @@ const Register = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-primary/20 p-4">
-      <div
-        className={`w-full max-w-md transition-all duration-700 ease-out ${
-          isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-        }`}
-      >
+      <div className="w-full max-w-md">
         <div className="flex justify-center mb-6">
           <div className="bg-primary/90 text-white p-4 rounded-full shadow-lg shadow-primary/20">
             <FiCreditCard className="w-8 h-8" />
@@ -139,10 +113,10 @@ const Register = () => {
           </div>
 
           <div className="p-8">
-            {(validationError || error) && (
+            {validationError && (
               <div className="bg-red-50 text-red-600 p-4 rounded-lg flex items-start mb-6 border-l-4 border-red-500 animate-fadeIn">
                 <FiAlertCircle className="mr-3 mt-0.5 flex-shrink-0" />
-                <span>{validationError || error}</span>
+                <span>{validationError}</span>
               </div>
             )}
 
@@ -304,36 +278,9 @@ const Register = () => {
               <div className="pt-3">
                 <button
                   type="submit"
-                  disabled={status === "loading"}
-                  className="w-full py-3 px-4 bg-gradient-to-r from-primary to-primary-dark text-white rounded-lg font-medium shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none flex justify-center items-center space-x-2"
+                  className="w-full py-3 px-4 bg-gradient-to-r from-primary to-primary-dark text-white rounded-lg font-medium shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50 transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0"
                 >
-                  {status === "loading" ? (
-                    <>
-                      <svg
-                        className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
-                      <span>กำลังสมัครสมาชิก...</span>
-                    </>
-                  ) : (
-                    <span>สมัครสมาชิก</span>
-                  )}
+                  สมัครสมาชิก
                 </button>
               </div>
             </form>
