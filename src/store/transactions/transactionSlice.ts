@@ -120,6 +120,15 @@ export const fetchLedgers = createAsyncThunk<
   };
 });
 
+export const deleteLedgerItem = createAsyncThunk<
+  number,
+  number,
+  { state: RootState }
+>("transactions/deleteLedgerItem", async (id, { dispatch, getState }) => {
+  await deleteLedger(id);
+  return id;
+});
+
 const transactionsSlice = createSlice({
     name: "transaction", initialState, reducers: {}, extraReducers: (builder) => {
         builder.addCase(fetchDashboardData.pending, (state) => {

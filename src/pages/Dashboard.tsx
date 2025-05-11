@@ -11,12 +11,12 @@ import TransactionItem from "../components/TransactionItem";
 import Pagination from "../components/Pagination";
 import DashboardCard from "../components/DashboardCard";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { fetchDashboardData,fetchLedgers } from "@/store/transactions/transactionSlice";
+import { fetchDashboardData, fetchLedgers,deleteLedgerItem } from "@/store/transactions/transactionSlice";
 
 
 const Dashboard = () => {
   const dispatch = useAppDispatch();
-  const {dashboardData,ledgers} = useAppSelector((state) => state.transaction);
+  const { dashboardData, ledgers } = useAppSelector((state) => state.transaction);
 
   const getOneMonthAgoDate = () => {
     const date = new Date();
@@ -42,17 +42,24 @@ const Dashboard = () => {
     fetchLedgersWithFilters()
   }, [])
 
-  const fetchLedgersWithFilters = ()=>{
+  useEffect(() => {
+    fetchLedgersWithFilters()
+    }, [currentPage, pageSize, currentType])
+
+  const fetchLedgersWithFilters = () => {
     dispatch(fetchLedgers(
-      {page:currentPage,
-      limit:pageSize,
-      startDate,
-      endDate,}
+      {
+        page: currentPage,
+        limit: pageSize,
+        startDate,
+        endDate,
+      }
     ))
   }
 
   const handleDateFilterChange = () => {
     dispatch(fetchDashboardData({ startDate, endDate }))
+    fetchLedgersWithFilters()
   };
 
   const handlePageChange = (pageNumber: any) => {
@@ -72,10 +79,12 @@ const Dashboard = () => {
     console.log("กรองตามประเภท:", type);
   };
 
-  const handleDeleteLedger = (id: any) => {
+  const handleDeleteLedger = async (id: any) => {
     if (window.confirm("คุณต้องการลบรายการนี้ใช่หรือไม่?")) {
-      console.log("ลบรายการ ID:", id);
-    }
+      await dispatch(deleteLedgerItem(id))
+      fetchLedgersWithFilters();
+      dispatch(fetchDashboardData({ startDate, endDate }))
+    } 
   };
 
   const formatCurrency = (value: any) => {
@@ -232,8 +241,8 @@ const Dashboard = () => {
                   <button
                     onClick={() => handleTypeFilter("all")}
                     className={`px-3 py-1 rounded-md ${currentType === "all"
-                        ? "bg-primary text-white"
-                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      ? "bg-primary text-white"
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                       }`}
                   >
                     ทั้งหมด
@@ -241,8 +250,8 @@ const Dashboard = () => {
                   <button
                     onClick={() => handleTypeFilter("income")}
                     className={`px-3 py-1 rounded-md ${currentType === "income"
-                        ? "bg-income text-white"
-                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      ? "bg-income text-white"
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                       }`}
                   >
                     รายรับ
@@ -250,8 +259,8 @@ const Dashboard = () => {
                   <button
                     onClick={() => handleTypeFilter("expense")}
                     className={`px-3 py-1 rounded-md ${currentType === "expense"
-                        ? "bg-expense text-white"
-                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                      ? "bg-expense text-white"
+                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                       }`}
                   >
                     รายจ่าย
