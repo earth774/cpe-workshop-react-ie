@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   FiArrowUpCircle,
@@ -10,8 +10,14 @@ import {
 import TransactionItem from "../components/TransactionItem";
 import Pagination from "../components/Pagination";
 import DashboardCard from "../components/DashboardCard";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+import { fetchDashboardData } from "@/store/transactions/transactionSlice";
+
 
 const Dashboard = () => {
+  const dispatch = useAppDispatch();
+  const dashboardData = useAppSelector((state) => state.transaction.dashboardData);
+
   const getOneMonthAgoDate = () => {
     const date = new Date();
     date.setMonth(date.getMonth() - 1);
@@ -31,18 +37,9 @@ const Dashboard = () => {
   const [pageSize, setPageSize] = useState(10);
   const [currentType, setCurrentType] = useState("all");
 
-  const dashboardData = {
-    income: 50000,
-    expense: 30000,
-    balance: 20000,
-    ledgerCategories: [
-      { id: 1, name: "เงินเดือน", balance: 30000 },
-      { id: 2, name: "อาหาร", balance: -5000 },
-      { id: 3, name: "การเดินทาง", balance: -3000 },
-      { id: 4, name: "ความบันเทิง", balance: -2000 },
-      { id: 5, name: "รายได้เสริม", balance: 20000 },
-    ],
-  };
+  useEffect(() => {
+    dispatch(fetchDashboardData({ startDate, endDate }))
+  }, [])
 
   const sampleLedgers = [
     {
@@ -182,7 +179,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <DashboardCard
           title="รายรับทั้งหมด"
-          amount={dashboardData.income}
+          amount={dashboardData?.income || 0}
           icon={<FiArrowUpCircle />}
           bgColor="bg-white"
           textColor="text-green-600"
@@ -190,7 +187,7 @@ const Dashboard = () => {
 
         <DashboardCard
           title="รายจ่ายทั้งหมด"
-          amount={dashboardData.expense}
+          amount={dashboardData?.expense || 0}
           icon={<FiArrowDownCircle />}
           bgColor="bg-white"
           textColor="text-red-600"
@@ -198,11 +195,11 @@ const Dashboard = () => {
 
         <DashboardCard
           title="ยอดคงเหลือ"
-          amount={dashboardData.balance}
+          amount={dashboardData?.balance || 0}
           icon={<FiDollarSign />}
           bgColor="bg-white"
           textColor={
-            dashboardData.balance >= 0 ? "text-blue-600" : "text-red-600"
+            (dashboardData?.balance || 0) >= 0 ? "text-blue-600" : "text-red-600"
           }
         />
       </div>
@@ -214,10 +211,10 @@ const Dashboard = () => {
           </div>
 
           <div className="p-4">
-            {dashboardData.ledgerCategories &&
-            dashboardData.ledgerCategories.length > 0 ? (
+            {dashboardData?.ledgerCategories &&
+              dashboardData!.ledgerCategories.length > 0 ? (
               <ul className="divide-y">
-                {dashboardData.ledgerCategories.map((category) => (
+                {dashboardData!.ledgerCategories.map((category) => (
                   <li key={category.id} className="py-3">
                     <div className="flex justify-between items-center">
                       <p className="font-medium">{category.name}</p>
@@ -272,31 +269,28 @@ const Dashboard = () => {
                 <div className="flex space-x-2">
                   <button
                     onClick={() => handleTypeFilter("all")}
-                    className={`px-3 py-1 rounded-md ${
-                      currentType === "all"
+                    className={`px-3 py-1 rounded-md ${currentType === "all"
                         ? "bg-primary text-white"
                         : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                    }`}
+                      }`}
                   >
                     ทั้งหมด
                   </button>
                   <button
                     onClick={() => handleTypeFilter("income")}
-                    className={`px-3 py-1 rounded-md ${
-                      currentType === "income"
+                    className={`px-3 py-1 rounded-md ${currentType === "income"
                         ? "bg-income text-white"
                         : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                    }`}
+                      }`}
                   >
                     รายรับ
                   </button>
                   <button
                     onClick={() => handleTypeFilter("expense")}
-                    className={`px-3 py-1 rounded-md ${
-                      currentType === "expense"
+                    className={`px-3 py-1 rounded-md ${currentType === "expense"
                         ? "bg-expense text-white"
                         : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                    }`}
+                      }`}
                   >
                     รายจ่าย
                   </button>
